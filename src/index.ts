@@ -1,89 +1,50 @@
-function maxSlidingWindow(nums: number[], k: number): number[] {
-    // write code here
-    if (!k || !nums?.length || k > nums?.length) {
-        return [];
+// 性能优化的柯里化实现（缓存柯里化函数）
+function memoizeCurry(fn) {
+  const arity = fn.length;
+  const cache = new Map(); // 缓存部分应用的函数
+  
+  function generateKey(args) {
+    return JSON.stringify(args);
+  }
+  
+  return function curried(...args) {
+    const key = generateKey(args);
+    
+    // 如果参数足够，直接执行
+    if (args.length >= arity) {
+      return fn.apply(this, args);
     }
-    let maxHeap = [], result = [];
-    const swap = (heap, a, b) => {
-        const temp = heap[a];
-        heap[a] = heap[b];
-        heap[b] = temp;
+    
+    // 检查缓存
+    if (cache.has(key)) {
+      return cache.get(key);
     }
-    // n是索引，构造一个索引堆 del和n分别是待删除和添加的nums索引
-    const insertIntoMaxHeap = (heap, n, del = -1) => {
-        // console.log('insert', JSON.stringify(heap), n, nums[n]);
-        if (del === -1) {
-            heap.push(n);
-            shiftUp(heap, heap.length - 1);
-        } else {
-            const idx = heap.indexOf(del);
-            heap[idx] = n;
-            if (nums[del] > nums[n]) {
-                shiftDown(heap, idx);
-            } else if (nums[del] < nums[n]) {
-                shiftUp(heap, idx);
-            }
-        }
-        
-    }
+    
+    // 创建新函数并缓存
+    const newCurried = function(...moreArgs) {
+      return curried.apply(this, args.concat(moreArgs));
+    };
+    
+    cache.set(key, newCurried);
+    return newCurried;
+  };
+}
 
-    const shiftUp = (heap, idx) => {
-        let i = idx, p = Math.ceil(i / 2) - 1;
-        const temp = heap[i];
-        while(p > 0 && nums[heap[p]] < nums[temp]) {
-            // swap(heap, i, p);
-            heap[i] = heap[p];
-            i = p;
-            p = Math.ceil(i / 2) - 1;
-        }
-        if (nums[heap[p]] < nums[heap[i]] && p === 0) {
-            // swap(heap, i, p);
-            heap[i] = heap[p];
-            heap[p] = temp;
-        } else {
-            heap[i] = temp;
-        }
-    }
+// 使用示例（适合频繁部分应用的场景）
+const expensiveOperation = memoizeCurry(function(a, b, c, d) {
+  console.log('执行复杂计算...');
+  // 模拟复杂计算
+  let result = 0;
+  for (let i = 0; i < 1000000; i++) {
+    result += Math.sqrt(a + b + c + d);
+  }
+  return result;
+});
 
-    const shiftDown = (heap, idx) => {
-        console.log('shiftDown')
-        let i = idx, lastP = Math.floor(heap.length / 2) - 1;
-        let l = i * 2 + 1, r = i * 2 + 2;
-        if ((nums[heap[i]] >= (nums[heap[l]] || -Infinity)) && (nums[heap[i]] >= (nums[heap[r]] || -Infinity))) {
-            return;
-        }
-        while(i <= lastP && ((nums[heap[i]] < (nums[heap[l]] || -Infinity)) || (nums[heap[i]] < (nums[heap[r]] || -Infinity)))) {
-            if (r < heap.length) {
-                if (nums[heap[l]] >= nums[heap[r]]) {
-                    swap(heap, i, l);
-                    i = l;
-                } else {
-                    swap(heap, i, r);
-                    i = r;
-                }
-            } else {
-                swap(heap, i, l);
-                i = l;
-            }
-            l = i * 2 + 1;
-            r = i * 2 + 2;
-        }
-    }
-    // init maxHeap of given size - k
-    for(let i = 0; i < k; i++) {
-        insertIntoMaxHeap(maxHeap, i);
-    }
-    result.push(nums[maxHeap[0]]);
-    for(let i = k; i < nums.length; i++) {
-        console.log(JSON.stringify(maxHeap), 'deleted idx', i-k, 'add idx', i, 'deleteVal', nums[i-k], 'addVal', nums[i])
-        console.log('---before replace---', JSON.stringify(maxHeap.map(i => nums[i])));
-        insertIntoMaxHeap(maxHeap, i, i - k);
-        console.log('---after replace---', JSON.stringify(maxHeap.map(i => nums[i])));
-        result.push(nums[maxHeap[0]]);
-    }
-    return result;
-};
+// 第一次调用会计算
+const withFirstArg = expensiveOperation(1);
+const withSecondArg = withFirstArg(2);
 
-const nums = [1,3,-1,-3,5,3,6,7];
-const k = 3;
-maxSlidingWindow(nums, k);
+// 第二次相同的部分应用会从缓存获取
+const withFirstArgAgain = expensiveOperation(1); // 从缓存获取
+console.log(withFirstArg === withFirstArgAgain); // true（相同函数引用）

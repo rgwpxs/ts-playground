@@ -1,62 +1,63 @@
-
-/***
- * 76. 最小覆盖子串
-*/
+/** 76. 最小覆盖子串
+ * 给定两个字符串 s 和 t，长度分别是 m 和 n，返回 s 中的 最短窗口子串，
+ * 使得该子串包含 t 中的每一个字符（包括重复字符）。
+ * 如果没有这样的子串，返回空字符串 ""。 测试用例保证答案唯一。
+ * @param s 
+ * @param t 
+ */
 function minWindow(s: string, t: string): string {
-    if (t.length > s.length || !t.length || !s.length) return '';
-    if (s.indexOf(t) > -1) return t;
-
-    // if (t.length === s.length) return t === s ? s : '';
-    const wordMap = {}, wordSet = new Set<string>();
-    for(let i = 0; i < t.length; i++) {
-        const v = t[i];
-        wordSet.add(v);
-        wordMap[v] = wordMap[v] ? wordMap[v] + 1 : 1;
-    }
-    const wordArr: string[] = Array.from(wordSet);
-    console.log(JSON.stringify(wordArr), JSON.stringify(wordMap));
-    const winMap = {}, winSet = new Set<string>();
-    const covered = (nm) => {
-        // console.log(JSON.stringify(nm));
-        return wordArr.every((w) => {
-            return wordMap[w] <= nm[w]
-        })
-    }
-    let left = 0, right = 0, window = [], result, len = Infinity;
-    while(right < s.length) {
-        // 向窗口添加值
-        const rVal = s[right];
-        window.push(rVal);
-        winMap[rVal] = winMap[rVal] ? winMap[rVal] + 1 : 1;
-        winSet.add(rVal);
-        right++;
-        let res;
-        while(covered(winMap)) {
-            res = [...window];
-            // 缩减窗口
-            const lVal = s[left];
-            window.shift();
-            winMap[lVal] = winMap[lVal] ? winMap[lVal] - 1 : 0;
-            left++;
+    const m = s.length, n = t.length;
+    if (m < n) return '';
+    const sm = {}, tm = {};
+    const keys = Array.from(new Set(t.split('')));
+    // init sm and tm
+    for(let i = 0; i < n; i++) {
+        let c = t[i];
+        if (tm[c]) {
+            tm[c]++;
+        } else {
+            tm[c] = 1;
         }
-        if (res?.length) {
-            const rl = res.join('');
-            console.log('-----res-----', rl.length);
-            if (rl.length < len) {
-                len = rl.length;
-                result = rl;
-            }
-        } else if (winSet.size === 1) {
-            const c = Array.from(winSet)[0];
-            while(winMap[c] > (wordMap[c] || 0)) {
-                window.shift();
-                winMap[c] = winMap[c] - 1;
-                left++;
-            }
-            // console.log(c, winMap[c], wordMap[c], left, window.length);
+        c = s[i];
+        if (sm[c]) {
+            sm[c]++;
+        } else {
+            sm[c] = 1;
         }
     }
-
-    return result || '';
+    const compare = () => {
+        for (let k of keys) {
+            if (!sm[k] || sm[k] < tm[k]) return false;
+        }
+        return true;
+    }
+    if (compare()) return s.split('').slice(0, n).join('');
+    let min = m + 1, l = 0, result = [];
+    for (let i = n; i < m; i++) {
+        let c = s[i];
+        if (tm[c]) {
+            if (sm[c]) {
+                sm[c]++;
+            } else {
+                sm[c] = 1;
+            }
+            if (tm[c] !== sm[c]) continue;
+        }
+        let len, flag = false;
+        while(compare()) {
+            flag = true;
+            len = i - l + 1;
+            sm[s[l]]--;
+            l++;
+        }
+        if (flag && len < min) {
+            min = len;
+            result.push(s.split('').slice(l-1, i + 1).join(''));
+        }
+    }
+    return result[result.length - 1] || '';
 };
 
+let s = "ADOBECODEBANC", t = 'ABC';
+
+console.log(minWindow(s, t));
